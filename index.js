@@ -1,7 +1,8 @@
 const express = require('express');
 const path = require('path');
 const port = 8000;
-
+const db = require('./config/mongoose')
+const Contact = require('./models/contact')
 
 const app = express();
 
@@ -26,32 +27,50 @@ var contactList = [
     }
 ]
 
-app.get('/', function(req,res){
-    return res.render('home', {
-        title: "My contact",
-        contact_List: contactList
-    });
+app.get('/', async function(req,res){
+
+    try{
+        const newContact = await Contact.find({})
+        return res.render('home', {
+            title: "My contact",
+            contact_List: newContact
+        });
+    }catch(err){
+       console.log('error fetching contacts from db')
+       return;
+    }
+    
 })
 
-app.post('/create-contact', function(req,res){
-     contactList.push({
-        name: req.body.name,
-        phone: req.body.phone
-     });
-     return res.redirect('/');
-})
+app.post('/create-contact', async function(req, res) {
+    try {
+        const newContact = await Contact.create({
+            name: req.body.name,
+            phone: req.body.phone
+        });
+
+        console.log('***********', newContact);
+        return res.redirect('back');
+    } catch (err) {
+        console.log('error in creating contact:', err);
+        return res.status(500).send('Error creating contact');
+    }
+});
+
 
 //delete contact
-app.get('/delete-contact/', function(req,res){
-    console.log(req.query);
-    let phone = req.query.phone;
-    let contactIndex = contactList.findIndex(contact => contact.phone == phone);
-    if(contactIndex != -1){
-        contactList.splice(contactIndex,1);
-    }
+app.get('/delete-contact/', async function(req, res) {
+    try {
+        let id = req.query.id;
+        await Contact.findByIdAndDelete(id).exec();
 
-    return res.redirect('back');
-})
+        return res.redirect('back');
+    } catch (err) {
+        console.log("error in deleting:", err);
+        return res.status(500).send('Error deleting contact');
+    }
+});
+
 
 app.listen(port, function(err){
     if(err){
